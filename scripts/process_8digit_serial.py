@@ -34,13 +34,13 @@ def extract_8digit_serial_numbers(excel_path):
             print("错误: 未找到'此处填写（必填）'列")
             # 尝试查找其他可能的列名
             print(f"可用的列: {list(df.columns)}")
-            sys.exit(1)
+            return None  # 返回None表示错误
         
         return list(serial_numbers)
         
     except Exception as e:
         print(f"读取Excel文件时出错: {str(e)}")
-        sys.exit(1)
+        return None  # 返回None表示错误
 
 def extract_serial(serial_str):
     """
@@ -75,6 +75,9 @@ def update_whitelist(serial_numbers, whitelist_path='WhiteList.config'):
     参数:
     serial_numbers: 新的序列号列表
     whitelist_path: 白名单文件路径
+    
+    返回:
+    是否有变化的布尔值
     """
     try:
         # 读取现有白名单（如果存在）
@@ -108,7 +111,7 @@ def update_whitelist(serial_numbers, whitelist_path='WhiteList.config'):
         
     except Exception as e:
         print(f"更新白名单文件时出错: {str(e)}")
-        sys.exit(1)
+        return False  # 返回False表示错误
 
 if __name__ == "__main__":
     # 文件路径配置
@@ -120,16 +123,30 @@ if __name__ == "__main__":
     # 检查Excel文件是否存在
     if not os.path.exists(EXCEL_PATH):
         print(f"警告: Excel文件 {EXCEL_PATH} 不存在")
+        # 文件不存在不是错误，只是没有数据可处理
         sys.exit(0)
     
-    # 提取序列号并更新白名单
+    # 提取序列号
     serial_numbers = extract_8digit_serial_numbers(EXCEL_PATH)
+    
+    if serial_numbers is None:
+        # 提取过程中出现错误
+        print("提取序列号时发生错误")
+        sys.exit(1)
     
     if not serial_numbers:
         print("未提取到有效的序列号")
+        # 没有提取到序列号不是错误，只是没有数据
         sys.exit(0)
     
-    has_changes = update_whitelist(serial_numbers)
+    # 更新白名单
+    success = update_whitelist(serial_numbers)
     
-    # 如果没有变化，退出码为0，有变化则为1
-    sys.exit(0 if not has_changes else 1)
+    if success is False:
+        # 更新白名单时发生错误
+        print("更新白名单时发生错误")
+        sys.exit(1)
+    
+    # 无论是否有变化，成功完成就返回0
+    print("处理完成")
+    sys.exit(0)
