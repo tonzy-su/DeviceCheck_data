@@ -1,4 +1,4 @@
-name: Update Device Whitelist from Excel
+name: Update Device Whitelist from 8-digit Serial Excel
 
 on:
   workflow_dispatch: # 允许手动触发
@@ -28,12 +28,12 @@ jobs:
         pip install pandas openpyxl
         
     - name: Run script to update whitelist
-      run: python scripts/update_whitelist.py
+      run: python scripts/process_8digit_serial.py
       
     - name: Commit and push changes
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add whitelist.txt
-        git diff --staged --quiet || git commit -m "Update whitelist from Excel - $(date)"
+        git add WhiteList.config
+        git diff --staged --quiet || git commit -m "自动更新白名单 - $(date +'%Y-%m-%d %H:%M')"
         git push
