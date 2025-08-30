@@ -21,9 +21,9 @@ def extract_8digit_serial_numbers(excel_path):
         serial_numbers = set()
         
         # 处理第一个工作表
-        # 列结构: A-提交者, B-提交时间, C-序列号
-        if '此处填写（必填）' in df.columns:
-            serials = df['此处填写（必填）'].dropna().astype(str).str.strip()
+        # 列结构: A-提交者, B-提交时间, C-序列号, D-QQ号
+        if '序列号（必填）' in df.columns:
+            serials = df['序列号（必填）'].dropna().astype(str).str.strip()
             for serial in serials:
                 # 提取序列号，忽略点号
                 clean_serial = extract_serial(serial)
@@ -31,12 +31,12 @@ def extract_8digit_serial_numbers(excel_path):
                     serial_numbers.add(clean_serial)
             print(f"从表1中提取了 {len(serial_numbers)} 个有效序列号")
         else:
-            print("错误: 未找到'此处填写（必填）'列")
+            print("错误: 未找到'序列号（必填）'列")
             # 尝试查找其他可能的列名
             print(f"可用的列: {list(df.columns)}")
             return None  # 返回None表示错误
         
-        return list(serial_numbers)
+        return serial_numbers  # 返回集合
         
     except Exception as e:
         print(f"读取Excel文件时出错: {str(e)}")
@@ -70,10 +70,10 @@ def extract_serial(serial_str):
 
 def update_whitelist(serial_numbers, whitelist_path='WhiteList.config'):
     """
-    更新白名单文件
+    更新白名单文件，实现完全同步
     
     参数:
-    serial_numbers: 新的序列号列表
+    serial_numbers: 从Excel提取的序列号集合
     whitelist_path: 白名单文件路径
     
     返回:
@@ -89,12 +89,15 @@ def update_whitelist(serial_numbers, whitelist_path='WhiteList.config'):
                     if line and not line.startswith('#'):  # 忽略空行和注释
                         existing_serials.add(line)
         
-        # 添加新的序列号
-        new_serials = set(serial_numbers)
-        all_serials = existing_serials.union(new_serials)
+        # 检查是否有变化
+        has_changes = (serial_numbers != existing_serials)
+        
+        if not has_changes:
+            print("白名单无变化")
+            return False
         
         # 按字母顺序排序
-        sorted_serials = sorted(all_serials)
+        sorted_serials = sorted(serial_numbers)
         
         # 写入白名单文件
         with open(whitelist_path, 'w') as f:
@@ -104,10 +107,8 @@ def update_whitelist(serial_numbers, whitelist_path='WhiteList.config'):
             for serial in sorted_serials:
                 f.write(f"{serial}\n")
         
-        new_count = len(new_serials - existing_serials)
-        print(f"白名单已更新: 总数 {len(sorted_serials)}, 新增 {new_count} 个序列号")
-        
-        return new_count > 0  # 返回是否有更新
+        print(f"白名单已同步更新: 总数 {len(sorted_serials)}")
+        return True
         
     except Exception as e:
         print(f"更新白名单文件时出错: {str(e)}")
@@ -134,19 +135,13 @@ if __name__ == "__main__":
         print("提取序列号时发生错误")
         sys.exit(1)
     
-    if not serial_numbers:
-        print("未提取到有效的序列号")
-        # 没有提取到序列号不是错误，只是没有数据
-        sys.exit(0)
-    
-    # 更新白名单
+    # 更新白名单（即使没有序列号也要同步，即清空白名单）
     success = update_whitelist(serial_numbers)
     
     if success is False:
-        # 更新白名单时发生错误
-        print("更新白名单时发生错误")
-        sys.exit(1)
+        # 更新白名单时发生错误或无变化
+        print("处理完成（无变化）")
+        sys.exit(0)
     
-    # 无论是否有变化，成功完成就返回0
     print("处理完成")
     sys.exit(0)
